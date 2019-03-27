@@ -1,9 +1,9 @@
-﻿using UniRx;
+﻿using Project.Work;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
-namespace Project.Work
+namespace Project.Test
 {
     public class UiManager : MonoBehaviour
     {
@@ -104,9 +104,9 @@ namespace Project.Work
                 if (_status == Status.Edit)
                 {
                     DrawPanel.Pause = true;
-                    _polygonStorer.SavePolygonScene();
+                    //_polygonStorer.SavePolygonScene();
                     SetMaskImageVisible(true, "wait save polygon scene...");
-                    bool result = await _polygonStorer.EndSaveSceneAsObservable;
+                    bool result = true;//await _polygonStorer.EndSaveSceneAsObservable;
                     if (result)
                     {
                         _status = Status.Main;

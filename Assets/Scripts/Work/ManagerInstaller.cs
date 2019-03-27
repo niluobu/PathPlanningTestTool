@@ -8,7 +8,7 @@ namespace Project.Work
         {
             Container.BindInterfacesTo<DrawManager>().AsSingle();
             Container.BindInterfacesTo<PolygonStorer>().AsSingle();
-            Container.BindInterfacesTo<Profile<SceneDataList>>().AsSingle();
+            Container.BindInterfacesTo<Profile<PolygonSceneConfig>>().AsSingle();
         }
     }
 }

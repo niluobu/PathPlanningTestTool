@@ -1,10 +1,11 @@
 ﻿using ModestTree;
+using Project.Work;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
-namespace Project.Work
+namespace Project.Test
 {
     public class PaintUi : MonoBehaviour
     {
@@ -128,7 +129,7 @@ namespace Project.Work
                 polygon.Add(vertex.Pos);
             }
             _drawManager.DrawVertexCircle(polygon);
-            _polygonStorer.StorePolygon(polygon);
+            //_polygonStorer.StorePolygon(polygon);
         }
 
         private bool PosIsCloseToStartVertex(Vector2Int pos)

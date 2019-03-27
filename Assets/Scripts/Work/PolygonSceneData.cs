@@ -14,7 +14,7 @@ namespace Project.Work
     public class PolygonScene
     {
         public int SceneNum;
-        public List<PolygonData> Polygons;
+        public List<Polygon> Polygons;
     }
 
     [Serializable]
@@ -28,7 +28,7 @@ namespace Project.Work
     public class Vertex
     {
         public int VertexNum;
-        public Vector2Int Point;
+        public Vector2Int Position;
     }
 }
 
