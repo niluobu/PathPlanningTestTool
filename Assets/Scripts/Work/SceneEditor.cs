@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using ModestTree;
+using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace Project.Work
 {
@@ -13,23 +15,26 @@ namespace Project.Work
         [Tooltip("相对相机z轴值的偏移")]
         public int VertexPositionZ = 10;
         public RectTransform DrawPanelRectTransform;
-        public int ApproximateDis = 10;
+        public int ApproximateDis = 20;
         public Transform LineRoot;
         public Transform VertexRoot;
 
         private Rect _drawRect;
         private readonly List<Vector2Int> _vertexPositions = new List<Vector2Int>();
-        private readonly List<GameObject> _points = new List<GameObject>();
-        private readonly List<GameObject> _lines = new List<GameObject>();
+        private readonly List<GameObject> _vertexes = new List<GameObject>();
+        private readonly List<GameObject> _edges = new List<GameObject>();
         private Vector2Int _mouseScreenPos = new Vector2Int();
         private GameObject _mouseLine = null;
         private GameObject _mouseVertex = null;
 
-        private Dictionary<int, List<GameObject>> _scenePoints = new Dictionary<int, List<GameObject>>();
-        private Dictionary<int, List<GameObject>> _sceneLines = new Dictionary<int, List<GameObject>>();
-        private List<Polygon> _polygons = new List<Polygon>();
+        private readonly Dictionary<int, List<GameObject>> _sceneVertexes = new Dictionary<int, List<GameObject>>();
+        private readonly Dictionary<int, List<GameObject>> _sceneEdges = new Dictionary<int, List<GameObject>>();
+        private readonly PolygonScene _polygonScene = new PolygonScene();
         private int _scenePolygonNum = 1000;
-        private int _sceneVertexNum = 0;
+        private bool _sceneDirty = false;
+
+        [Inject] private readonly IPolygonSceneStorer _polygonSceneStorer;
+        [Inject] private readonly IPolygonSceneChecker _polygonSceneChecker;
 
         private bool _editorOn = false;
         public bool EditorOn
@@ -38,10 +43,94 @@ namespace Project.Work
             set => _editorOn = value;
         }
 
+        public bool SceneDirty => _sceneDirty;
+
+        public bool Undo()
+        {
+            if (_vertexes.IsEmpty())
+            {
+                return false;
+            }
+            GameObject.Destroy(_mouseVertex);
+            _vertexes.RemoveAt(_vertexes.Count - 1);
+            _mouseVertex = _vertexes.IsEmpty() ? null : _vertexes[_vertexes.Count - 1];
+            if (_edges.Contains(_mouseLine))
+            {
+                _edges.Remove(_mouseLine);
+            }
+            GameObject.Destroy(_mouseLine);
+            _mouseLine = _edges.IsEmpty() ? null : _edges[_edges.Count - 1];
+            return true;
+        }
+
+        #region SaveScene
+        public bool SaveScene()
+        {
+            bool succeed = SceneValidityCheck();
+            if (succeed)
+            {
+                _polygonSceneStorer.SavePolygonScene(_polygonScene);
+                _sceneDirty = false;
+            }
+            return succeed;
+        }
+
+        private bool SceneValidityCheck()
+        {
+            List<int> invalidPolygonNums = _polygonSceneChecker.CheckPolygonScene(_polygonScene);
+            ClearInvalidPolygon(invalidPolygonNums);
+            return invalidPolygonNums.IsEmpty();
+        }
+
+        private void ClearInvalidPolygon(List<int> invalidPolygonNums)
+        {
+            foreach (var invalidPolygonNum in invalidPolygonNums)
+            {
+                Polygon invalidPolygon = _polygonScene.Polygons.Find(x => x.PolygonNum == invalidPolygonNum);
+                if (invalidPolygon != null)
+                {
+                    _polygonScene.Polygons.Remove(invalidPolygon);
+                }
+
+                if (_sceneVertexes.ContainsKey(invalidPolygonNum))
+                {
+                    foreach (var point in _sceneVertexes[invalidPolygonNum])
+                    {
+                        GameObject.Destroy(point);
+                    }
+
+                    _sceneVertexes.Remove(invalidPolygonNum);
+                }
+
+                if (_sceneEdges.ContainsKey(invalidPolygonNum))
+                {
+                    foreach (var line in _sceneEdges[invalidPolygonNum])
+                    {
+                        GameObject.Destroy(line);
+                    }
+
+                    _sceneEdges.Remove(invalidPolygonNum);
+                }
+            }
+        }
+        #endregion
+
         private void Start()
         {
             SetTextureRect();
             SetLineColor(LineColor);
+            InitPolygonScene();
+        }
+
+        private void InitPolygonScene()
+        {
+            int sceneNum = 2000;
+            if (_polygonSceneStorer.PolygonScenes.Count > 0)
+            {
+                sceneNum += _polygonSceneStorer.PolygonScenes.Count;
+            }
+            _polygonScene.SceneNum = sceneNum;
+            _polygonScene.Polygons = new List<Polygon>();
         }
 
         private void Update()
@@ -52,7 +141,7 @@ namespace Project.Work
             {
                 if (Input.GetMouseButtonDown(0))
                 {
-                    DrawVertex(_mouseScreenPos);
+                    AddNewVertex(_mouseScreenPos);
                 }
 
                 UpdataMouseLine();
@@ -70,59 +159,46 @@ namespace Project.Work
             {
                 _mouseLine = CreateLineObject();
             }
+
+            if (_vertexPositions.Count > 2 && IsClose(_mouseScreenPos, _vertexPositions[0]))
+            {
+                SetLine(_vertexes[0].transform.position, _mouseVertex, _mouseLine);
+                return;
+            }
             SetLine(GetWorldPos(_mouseScreenPos), _mouseVertex, _mouseLine);
         }
 
-        private void DrawVertex(Vector2Int screenPos)
+        private void AddNewVertex(Vector2Int mouseScreenPos)
         {
             //将要新添加的顶点与第一个顶点相近，自动连接这两点，结束当前多边形的绘制
-            if (_vertexPositions.Count > 2 && IsClose(screenPos, _vertexPositions[0]))
+            if (_vertexPositions.Count > 2 && IsClose(mouseScreenPos, _vertexPositions[0]))
             {
-                SetLine(_points[_points.Count - 1].transform.position, _points[0], _mouseLine);
+                AddLine(_vertexes[_vertexes.Count - 1].transform.position, _vertexes[0]);
                 EndCurrentPolygonDrawing();
                 return;
             }
 
-            GameObject vertex = CreateVertexObject(GetWorldPos(screenPos));
-            _points.Add(vertex);
-            _vertexPositions.Add(screenPos);
+            AddVertex(mouseScreenPos);
+            if (_vertexes.Count > 1)
+            {
+                AddLine(_vertexes[_vertexes.Count - 2].transform.position, _mouseVertex);
+            }
+        }
+
+        private void AddVertex(Vector2Int mouseScreenPos)
+        {
+            GameObject vertex = CreateVertexObject(GetWorldPos(mouseScreenPos));
+            _vertexes.Add(vertex);
+            _vertexPositions.Add(mouseScreenPos);
             _mouseVertex = vertex;
-            if (_points.Count > 1)  //将之前的线确定下来，生成新的线作为连接鼠标和新的顶点的线
-            {
-                SetLine(_points[_points.Count - 2].transform.position, _mouseVertex, _mouseLine);
-                _lines.Add(_mouseLine);
-                _mouseLine = CreateLineObject();
-            }
+            _sceneDirty = true;
         }
 
-        private void EndCurrentPolygonDrawing()
-        {
-            CreatePolygon(out Polygon polygon);
-            _polygons.Add(polygon);
-            _vertexPositions.Clear();
-            _scenePoints.Add(polygon.PolygonNum, new List<GameObject>(_points));
-            _points.Clear();
-            _sceneLines.Add(polygon.PolygonNum, new List<GameObject>(_lines));
-            _lines.Clear();
+        private void AddLine(Vector3 pos, GameObject v)
+        {   //设置线的位置，添加到边的队列，生成新的线作为连接鼠标和新的顶点的线
+            SetLine(pos, v, _mouseLine);
+            _edges.Add(_mouseLine);
             _mouseLine = null;
-            _mouseVertex = null;
-        }
-
-        private void CreatePolygon(out Polygon polygon)
-        {
-            polygon = new Polygon()
-            {
-                PolygonNum = _scenePolygonNum++,
-                Vertexes = new List<Vertex>()
-            };
-            foreach (var pos in _vertexPositions)
-            {
-                polygon.Vertexes.Add(new Vertex()
-                {
-                    Position = pos,
-                    VertexNum = _sceneVertexNum++
-                });
-            }
         }
 
         private void SetLineColor(Color color)
@@ -139,12 +215,46 @@ namespace Project.Work
             line.transform.rotation *= Quaternion.Euler(90, 0, 0);
         }
 
+        #region EndCurrentPolygonDrawing
+        private void EndCurrentPolygonDrawing()
+        {
+            CreatePolygon(out Polygon polygon);
+            _polygonScene.Polygons.Add(polygon);
+            _vertexPositions.Clear();
+
+            _sceneVertexes.Add(polygon.PolygonNum, new List<GameObject>(_vertexes));
+            _vertexes.Clear();
+
+            _sceneEdges.Add(polygon.PolygonNum, new List<GameObject>(_edges));
+            _edges.Clear();
+            _mouseLine = null;
+            _mouseVertex = null;
+        }
+
+        private void CreatePolygon(out Polygon polygon)
+        {
+            polygon = new Polygon()
+            {
+                PolygonNum = _scenePolygonNum++,
+                Vertexes = new List<Vertex>()
+            };
+            for (int i = 0; i < _vertexPositions.Count; ++i)
+            {
+                polygon.Vertexes.Add(new Vertex()
+                {
+                    Position = _vertexPositions[i],
+                    VertexNum = i
+                });
+            }
+        }
+        #endregion
+
         #region CreateGameObject
         private GameObject CreateLineObject()
         {
             GameObject line = new GameObject
             {
-                name = $"Polygon {_scenePolygonNum} line #{_lines.Count}"
+                name = $"Polygon {_scenePolygonNum} line #{_edges.Count}"
             };
             line.transform.parent = LineRoot;
             line.transform.localPosition = new Vector3(0f, 1f, 0f);
@@ -159,7 +269,7 @@ namespace Project.Work
         private GameObject CreateVertexObject(Vector3 pos)
         {
             GameObject vertex = GameObject.Instantiate(VertexPrefab, pos, Quaternion.identity);
-            vertex.name = $"Polygon {_scenePolygonNum} vertex #{_points.Count}";
+            vertex.name = $"Polygon {_scenePolygonNum} vertex #{_vertexes.Count}";
             vertex.transform.parent = VertexRoot;
             return vertex;
         }

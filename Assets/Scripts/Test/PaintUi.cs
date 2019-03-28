@@ -29,7 +29,7 @@ namespace Project.Test
         private Rect _textureRect;
 
         [Inject] private readonly IDrawManager _drawManager;
-        [Inject] private readonly IPolygonStorer _polygonStorer;
+        [Inject] private readonly IPolygonSceneStorer _polygonStorer;
 
         [HideInInspector]
         public bool Pause = false;

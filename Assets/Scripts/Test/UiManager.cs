@@ -32,7 +32,7 @@ namespace Project.Test
 
         public PaintUi DrawPanel;
 
-        [Inject] private readonly IPolygonStorer _polygonStorer;
+        [Inject] private readonly IPolygonSceneStorer _polygonStorer;
         private Status _status = Status.Main;
 
         private enum Status

@@ -127,7 +127,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &19919110
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1614,6 +1614,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SceneEditor: {fileID: 1957332982}
+  SceneDraw: {fileID: 1263775637}
   PopupPanel: {fileID: 1131770523}
   TipsText: {fileID: 333943756}
   OkButton: {fileID: 1113564309}
@@ -2178,7 +2179,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
   m_AnchoredPosition: {x: 0.00015258789, y: 0.000091552734}
-  m_SizeDelta: {x: 320, y: 0}
+  m_SizeDelta: {x: 320, y: 97.1}
   m_Pivot: {x: 0.5, y: 1.0000001}
 --- !u!114 &1102091122
 MonoBehaviour:
@@ -2897,6 +2898,7 @@ GameObject:
   - component: {fileID: 1263775634}
   - component: {fileID: 1263775636}
   - component: {fileID: 1263775635}
+  - component: {fileID: 1263775637}
   m_Layer: 5
   m_Name: DrawPanel
   m_TagString: Untagged
@@ -2960,6 +2962,25 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1263775633}
   m_CullTransparentMesh: 0
+--- !u!114 &1263775637
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1263775633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f53e83fab336f64cadc46456f9ed079, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DrawPanel: {fileID: 1263775635}
+  PolygonLineWide: 2
+  PolygonLineColor: {r: 0, g: 0, b: 0, a: 0}
+  VisibleGLineWide: 1
+  VisibleGLineColor: {r: 0.015686259, g: 0.35601363, b: 0.972549, a: 1}
+  ResultPathLineWide: 3
+  ResultPathLineColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!1 &1276989561
 GameObject:
   m_ObjectHideFlags: 0
@@ -4202,7 +4223,7 @@ MonoBehaviour:
   CylinderMesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
   VertexPositionZ: 10
   DrawPanelRectTransform: {fileID: 1263775634}
-  ApproximateDis: 10
+  ApproximateDis: 20
   LineRoot: {fileID: 664068742}
   VertexRoot: {fileID: 971085370}
 --- !u!1 &1983810782
