@@ -43,7 +43,18 @@ namespace Project.Work
             set => _editorOn = value;
         }
 
-        public bool SceneDirty => _sceneDirty;
+        public bool SceneDirty
+        {
+            get
+            {
+                bool sceneIsEmpty = _polygonScene.Polygons.IsEmpty() && _vertexes.IsEmpty();
+                if (sceneIsEmpty)
+                {
+                    return false;
+                }
+                return _sceneDirty;
+            }
+        }
 
         public bool Undo()
         {
@@ -53,6 +64,7 @@ namespace Project.Work
             }
             GameObject.Destroy(_mouseVertex);
             _vertexes.RemoveAt(_vertexes.Count - 1);
+            _vertexPositions.RemoveAt(_vertexPositions.Count - 1);
             _mouseVertex = _vertexes.IsEmpty() ? null : _vertexes[_vertexes.Count - 1];
             if (_edges.Contains(_mouseLine))
             {
@@ -61,6 +73,67 @@ namespace Project.Work
             GameObject.Destroy(_mouseLine);
             _mouseLine = _edges.IsEmpty() ? null : _edges[_edges.Count - 1];
             return true;
+        }
+
+        public void ClearScene()
+        {
+            _vertexPositions.Clear();
+
+            //删除临时顶点
+            foreach (GameObject g in _vertexes)
+            {
+                if (g == null)
+                {
+                    continue;
+                }
+                GameObject.Destroy(g);
+            }
+            _vertexes.Clear();
+            _mouseVertex = null;
+
+            //删除临时边
+            foreach (GameObject g in _edges)
+            {
+                if (g == null)
+                {
+                    continue;
+                }
+                GameObject.Destroy(g);
+            }
+            _edges.Clear();
+            if (_mouseLine != null)
+            {
+                GameObject.Destroy(_mouseLine);
+                _mouseLine = null;
+            }
+
+            //删除已保存的边
+            foreach (List<GameObject> edges in _sceneEdges.Values)
+            {
+                foreach (GameObject g in edges)
+                {
+                    if (g == null)
+                    {
+                        continue;
+                    }
+                    GameObject.Destroy(g);
+                }
+            }
+            _sceneEdges.Clear();
+
+            //删除已保存的顶点
+            foreach (List<GameObject> vertexes in _sceneVertexes.Values)
+            {
+                foreach (GameObject g in vertexes)
+                {
+                    if (g == null)
+                    {
+                        continue;
+                    }
+                    GameObject.Destroy(g);
+                }
+            }
+            _sceneVertexes.Clear();
         }
 
         #region SaveScene
@@ -289,16 +362,6 @@ namespace Project.Work
         private bool IsClose(Vector2Int pos1, Vector2Int pos2)
         {
             return Vector2Int.Distance(pos1, pos2) < ApproximateDis;
-        }
-
-        private Vector2Int ConvertPosition(Vector2Int pos)
-        {
-            Vector2Int cpos = new Vector2Int
-            {
-                x = pos.x - (int)_drawRect.xMin,
-                y = pos.y - (int)_drawRect.yMin
-            };
-            return cpos;
         }
 
         private bool MouseIsInDrawPanel(Vector2Int mousePos)

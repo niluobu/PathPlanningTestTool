@@ -30,6 +30,22 @@ namespace Project.Work
         public int VertexNum;
         public Vector2Int Position;
     }
+
+    public static class PolygonExtension
+    {
+        public static int GetMinX(this Polygon polygon)
+        {
+            int minx = Int32.MaxValue;
+            foreach (var vertex in polygon.Vertexes)
+            {
+                if (vertex.Position.x < minx)
+                {
+                    minx = vertex.Position.x;
+                }
+            }
+            return minx;
+        }
+    }
 }
 
 

@@ -1,4 +1,5 @@
-﻿using UniRx;
+﻿using System;
+using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -40,6 +41,9 @@ namespace Project.Work
 
         [Inject] private readonly IPolygonSceneStorer _polygonStorer;
 
+        private readonly Subject<bool> _confirmSubject = new Subject<bool>();
+        private IObservable<bool> _confirmAsObservable => _confirmSubject;
+
         private void Start()
         {
             InitView();
@@ -50,6 +54,7 @@ namespace Project.Work
         private void InitView()
         {
             ShowMainPanel();
+            RefreshSceneItem();
             PopupPanel.SetActive(false);
             SceneEditor.EditorOn = false;
         }
@@ -58,45 +63,93 @@ namespace Project.Work
         {
             CreateButton.onClick.AddListener(() =>
             {
-                ShowEditPanel();
                 SceneEditor.EditorOn = true;
+                ShowEditPanel();
             });
 
-            UndoButton.onClick.AddListener(() =>
+            SaveButton.onClick.AddListener(async () =>
             {
-                bool succeed = SceneEditor.Undo();
-                if (!succeed)
-                {
-                    Debug.Log("只支持撤销当前编辑的多边形操作！");
-                }
-            });
-
-            SaveButton.onClick.AddListener(() =>
-            {
+                SceneEditor.EditorOn = false;
                 bool succeed = SceneEditor.SaveScene();
                 if (!succeed)
                 {
-                    Debug.Log("场景中有无效的多边形，程序已自动将它们删除，请再次保存或继续编辑场景");
+                    ShowPopupPanel("场景中有无效的多边形，程序已自动将它们删除，请再次保存或继续编辑场景", false);
                 }
                 else
                 {
-                    Debug.Log("保存成功，退回上一级可查看该新场景的信息，并选择进行测试");
+                    ShowPopupPanel("保存成功！\n退回上一级可查看该新场景的信息，并选择进行测试", false);
+                }
+                await _confirmAsObservable;
+                SceneEditor.EditorOn = true;
+            });
+
+            ExitEditButton.onClick.AddListener(async () =>
+            {
+                SceneEditor.EditorOn = false;
+                if (!SceneEditor.SceneDirty)
+                {
+                    ShowMainPanel();
+                    SceneEditor.ClearScene();
+                }
+                else
+                {
+                    ShowPopupPanel("是否退出？（当前场景的编辑进度将会丢失）", true);
+                    bool chioce = await _confirmAsObservable;
+                    if (chioce == true)
+                    {
+                        ShowMainPanel();
+                        SceneEditor.ClearScene();
+                    }
+                    else
+                    {
+                        SceneEditor.EditorOn = true;
+                    }
                 }
             });
 
-            ExitEditButton.onClick.AddListener(() =>
+            UndoButton.onClick.AddListener(async () =>
             {
-                if (!SceneEditor.SceneDirty)
+                SceneEditor.EditorOn = false;
+                bool succeed = SceneEditor.Undo();
+                if (!succeed)
                 {
-                    Debug.Log("是否保存场景并退出？");
-                    //todo
+                    ShowPopupPanel("只支持撤销当前编辑的多边形操作！", false);
+                    await _confirmAsObservable;
                 }
-                else
-                {
-                    Debug.Log("是否退出（将会舍弃当前未编辑完的多边形）");
-                    SceneEditor.EditorOn = false;
-                    ShowMainPanel();
-                }
+                SceneEditor.EditorOn = true;
+            });
+
+            OkButton.onClick.AddListener(() =>
+            {
+                _confirmSubject.OnNext(true);
+                PopupPanel.SetActive(false);
+            });
+
+            CancelButton.onClick.AddListener(() =>
+            {
+                _confirmSubject.OnNext(false);
+                PopupPanel.SetActive(false);
+            });
+
+            ExitRunButton.onClick.AddListener(() =>
+            {
+                ShowMainPanel();
+                SceneDraw.ClearDrawPanel();
+            });
+
+            StartButton.onClick.AddListener(async () =>
+            {
+
+            });
+
+            ResetButton.onClick.AddListener(async () =>
+            {
+
+            });
+
+            VisibleToggle.onValueChanged.AddListener(x =>
+            {
+
             });
         }
 
@@ -111,7 +164,6 @@ namespace Project.Work
             MainPanel.SetActive(true);
             EditPanel.SetActive(false);
             RunPanel.SetActive(false);
-            RefreshSceneItem();
         }
 
         private void RefreshSceneItem()
@@ -126,9 +178,7 @@ namespace Project.Work
         private void AddSceneItem(PolygonScene scene)
         {
             GameObject item = GameObject.Instantiate(SceneItemPrefab);
-            item.transform.parent = SceneItemRoot;
-            item.transform.localPosition = Vector3.zero;
-            item.transform.localScale = Vector3.one;
+            item.transform.SetParent(SceneItemRoot, false);
             item.name = $"scene No. {scene.SceneNum}";
             Text numText = item.GetComponentInChildren<Text>();
             numText.text = item.name;
@@ -153,6 +203,16 @@ namespace Project.Work
             EditPanel.SetActive(false);
             RunPanel.SetActive(true);
             SetTextPanel(false);
+            ResetParameterText();
+        }
+
+        private void ResetParameterText()
+        {
+            string emptyText = "_ _";
+            VertexNumText.text = emptyText;
+            EdgeNumText.text = emptyText;
+            CVGTimeText.text = emptyText;
+            SPTimeText.text = emptyText;
         }
 
         private void SetTextPanel(bool visible)
@@ -161,10 +221,11 @@ namespace Project.Work
             TextPanel.SetActive(visible);
         }
 
-        private void ShowPopupPanel(string tip)
+        private void ShowPopupPanel(string tip, bool doChoice)
         {
             PopupPanel.SetActive(true);
             TipsText.text = tip;
+            CancelButton.gameObject.SetActive(doChoice);
         }
     }
 

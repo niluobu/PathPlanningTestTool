@@ -15,7 +15,6 @@ namespace Project.Work
 
     public class PolygonSceneStorer : IPolygonSceneStorer, IInitializable
     {
-        [Inject] private readonly IDrawManager _drawManager;
         [Inject] private readonly IProfile<PolygonSceneConfig> _profile;
 
         private List<PolygonScene> _polygonScenes;

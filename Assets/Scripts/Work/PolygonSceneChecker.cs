@@ -118,7 +118,7 @@ namespace Project.Work
         {
             float minDis = Mathf.Min(PointToEdgeShortestDis(a.Edge.Item1, b), PointToEdgeShortestDis(a.Edge.Item2, b),
                 PointToEdgeShortestDis(b.Edge.Item1, a), PointToEdgeShortestDis(b.Edge.Item2, a));
-            Debug.Log($"polygon {a.PolygonNum} edge {a.EdgeNum} with polygon {b.PolygonNum} edge {b.EdgeNum} misDis : {minDis}");
+            //Debug.Log($"polygon {a.PolygonNum} edge {a.EdgeNum} with polygon {b.PolygonNum} edge {b.EdgeNum} misDis : {minDis}");
             return minDis < ApproximateDis;
         }
 

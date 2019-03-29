@@ -6,7 +6,7 @@ namespace Project.Work
     {
         public override void InstallBindings()
         {
-            Container.BindInterfacesTo<DrawManager>().AsSingle();
+            Container.BindInterfacesTo<GlUtil>().AsSingle();
             Container.BindInterfacesTo<PolygonSceneStorer>().AsSingle();
             Container.BindInterfacesTo<PolygonSceneChecker>().AsSingle();
             Container.BindInterfacesTo<Profile<PolygonSceneConfig>>().AsSingle();
