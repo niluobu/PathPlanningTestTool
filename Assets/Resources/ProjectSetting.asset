@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87646ce193fc3c34d90d1180784e2d10, type: 3}
+  m_Name: ProjectSetting
+  m_EditorClassIdentifier: 
+  PolygonLineWide: 1
+  PolygonLineColor: {r: 0.49056602, g: 0.47899607, b: 0.47899607, a: 1}
+  VisibleGLineWide: 2
+  VisibleGLineColor: {r: 0, g: 0.45181608, b: 1, a: 1}
+  ResultPathLineWide: 3
+  ResultPathLineColor: {r: 1, g: 0, b: 0, a: 1}
+  FillColor: {r: 0.26415092, g: 0.26415092, b: 0.26415092, a: 1}
+  TextureBgColor: {r: 1, g: 1, b: 1, a: 1}

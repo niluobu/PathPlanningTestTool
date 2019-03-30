@@ -9,7 +9,6 @@ namespace Project.Work
     public class UiManager : MonoBehaviour
     {
         public SceneEditor SceneEditor;
-        public SceneDraw SceneDraw;
         [Header("-------------")]
         public GameObject PopupPanel;
         public Text TipsText;
@@ -28,10 +27,10 @@ namespace Project.Work
         public Button ExitEditButton;
         [Header("-------------")]
         public GameObject RunPanel;
-        public Toggle VisibleToggle;
         public Button StartButton;
-        public Button ResetButton;
+        public Button SetButton;
         public Button ExitRunButton;
+        public Image ButtonMask;
         public GameObject TextPanel;
         public Text VertexNumText;
         public Text EdgeNumText;
@@ -40,6 +39,7 @@ namespace Project.Work
         public Text HintText;
 
         [Inject] private readonly IPolygonSceneStorer _polygonStorer;
+        [Inject] private readonly IRunManager _runManager;
 
         private readonly Subject<bool> _confirmSubject = new Subject<bool>();
         private IObservable<bool> _confirmAsObservable => _confirmSubject;
@@ -134,29 +134,50 @@ namespace Project.Work
             ExitRunButton.onClick.AddListener(() =>
             {
                 ShowMainPanel();
-                SceneDraw.ClearDrawPanel();
+                _runManager.ClearDrawPanel();
+                SceneEditor.ClearSEObject();
             });
 
             StartButton.onClick.AddListener(async () =>
             {
-
+                if (SceneEditor.BeReady())
+                {
+                    _runManager.StartTest(SceneEditor.SEPoint[0], SceneEditor.SEPoint[1]);
+                    SetHintText("测试程序运行中...");
+                    SetButtomMask(true);
+                }
+                else
+                {
+                    ShowPopupPanel("设置起点和终点后才能开始测试！", false);
+                }
             });
 
-            ResetButton.onClick.AddListener(async () =>
+            SetButton.onClick.AddListener(async () =>
             {
-
+                SceneEditor.SetOrReset();
             });
 
-            VisibleToggle.onValueChanged.AddListener(x =>
-            {
-
-            });
         }
 
         private void AddSubscribe()
         {
             _polygonStorer.AddPolygonScenesAsObservable
                 .Subscribe(AddSceneItem);
+
+            _runManager.TestStageHintAsObservable
+                .Subscribe(SetHintText);
+
+            _runManager.TestEndAsObservable
+                .Subscribe(_ =>
+                {
+                    SetButtomMask(false);
+                    SetParameterText();
+                });
+        }
+
+        private void SetButtomMask(bool visible)
+        {
+            ButtonMask.gameObject.SetActive(visible);
         }
 
         private void ShowMainPanel()
@@ -185,7 +206,7 @@ namespace Project.Work
             Button button = item.GetComponentInChildren<Button>();
             button.onClick.AddListener(() =>
             {
-                SceneDraw.DrawScene(scene);
+                _runManager.DrawScene(scene);
                 ShowRunPanel();
             });
         }
@@ -202,8 +223,20 @@ namespace Project.Work
             MainPanel.SetActive(false);
             EditPanel.SetActive(false);
             RunPanel.SetActive(true);
-            SetTextPanel(false);
+            SetParameterTextVisible(false);
+            SetButtomMask(false);
+            SetHintText("设置起点和终点后，便可开始测试");
             ResetParameterText();
+        }
+
+        private void SetParameterText()
+        {
+            SetParameterTextVisible(true);
+            _runManager.GetTestParameter(out int vertexNum, out int edgeNum, out int CVGTime, out int SPTime);
+            VertexNumText.text = vertexNum.ToString();
+            EdgeNumText.text = edgeNum.ToString();
+            CVGTimeText.text = CVGTime.ToString();
+            SPTimeText.text = SPTime.ToString();
         }
 
         private void ResetParameterText()
@@ -215,7 +248,12 @@ namespace Project.Work
             SPTimeText.text = emptyText;
         }
 
-        private void SetTextPanel(bool visible)
+        private void SetHintText(string hint)
+        {
+            HintText.text = hint;
+        }
+
+        private void SetParameterTextVisible(bool visible)
         {
             HintText.gameObject.SetActive(!visible);
             TextPanel.SetActive(visible);

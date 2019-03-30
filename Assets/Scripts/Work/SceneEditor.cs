@@ -9,12 +9,12 @@ namespace Project.Work
     {
         public Material LineMaterial;
         public float LineWide = 0.05f;
+        public float VertexRadius = 0.1f;
         public Color LineColor;
         public GameObject VertexPrefab;
         public Mesh CylinderMesh;
         [Tooltip("相对相机z轴值的偏移")]
         public int VertexPositionZ = 10;
-        public RectTransform DrawPanelRectTransform;
         public int ApproximateDis = 20;
         public Transform LineRoot;
         public Transform VertexRoot;
@@ -33,14 +33,30 @@ namespace Project.Work
         private int _scenePolygonNum = 1000;
         private bool _sceneDirty = false;
 
+        [HideInInspector]
+        public List<Vector2Int> SEPoint = new List<Vector2Int>();
+        private List<GameObject> _SEPointObject = new List<GameObject>();
+        private bool _setOn = false;
+        private GameObject _mousePoint = null;
+
         [Inject] private readonly IPolygonSceneStorer _polygonSceneStorer;
         [Inject] private readonly IPolygonSceneChecker _polygonSceneChecker;
+        [Inject] private readonly IDrawPanelPreference _drawPanelPreference;
+        [Inject] private readonly ProjectSetting _projectSetting;
 
         private bool _editorOn = false;
         public bool EditorOn
         {
             get => _editorOn;
-            set => _editorOn = value;
+            set
+            {
+                _editorOn = value;
+                if (value)
+                {
+                    SetLineColor(LineColor);
+                    SetVertexRadius(VertexRadius);
+                }
+            }
         }
 
         public bool SceneDirty
@@ -188,10 +204,54 @@ namespace Project.Work
         }
         #endregion
 
+        public bool BeReady()
+        {
+            return SEPoint.Count == 2;
+        }
+
+        public void SetOrReset()
+        {
+            if (!SEPoint.IsEmpty())
+            {
+                ClearSEPoint();
+                _setOn = true;
+                return;
+            }
+            _setOn = true;
+            SetLineColor(_projectSetting.PolygonLineColor);
+            SetVertexRadius(_projectSetting.SEPointRadius);
+            if (_mousePoint == null)
+            {
+                _mousePoint = CreateSEPointObject(Vector3.zero);
+            }
+        }
+
+        public void ClearSEObject()
+        {
+            _setOn = false;
+            ClearSEPoint();
+        }
+
+        private void ClearSEPoint()
+        {
+            if (_mousePoint != null)
+            {
+                GameObject.Destroy(_mousePoint);
+                _mousePoint = null;
+            }
+
+            SEPoint.Clear();
+            for (int i = _SEPointObject.Count - 1; i >= 0; --i)
+            {
+                GameObject.Destroy(_SEPointObject[i]);
+            }
+            _SEPointObject.Clear();
+        }
+
         private void Start()
         {
-            SetTextureRect();
             SetLineColor(LineColor);
+            SetVertexRadius(VertexRadius);
             InitPolygonScene();
         }
 
@@ -210,7 +270,7 @@ namespace Project.Work
         {
             _mouseScreenPos.x = (int)Input.mousePosition.x;
             _mouseScreenPos.y = (int)Input.mousePosition.y;
-            if (_editorOn && MouseIsInDrawPanel(_mouseScreenPos))
+            if (_editorOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
             {
                 if (Input.GetMouseButtonDown(0))
                 {
@@ -219,6 +279,50 @@ namespace Project.Work
 
                 UpdataMouseLine();
             }
+
+            if (_setOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
+            {
+                if (Input.GetMouseButtonDown(0))
+                {
+                    AddSEPoint(_mouseScreenPos);
+                }
+
+                UpdataMousePoint();
+            }
+        }
+
+        private void UpdataMousePoint()
+        {
+            if (SEPoint.Count == 2)
+            {
+                return;
+            }
+            if (_mousePoint == null)
+            {
+                _mousePoint = CreateSEPointObject(GetWorldPos(_mouseScreenPos));
+            }
+            SetPoint(_mousePoint, GetWorldPos(_mouseScreenPos));
+        }
+
+        private void AddSEPoint(Vector2Int mouseScreenPos)
+        {
+            if (!_drawPanelPreference.PointAroundIsBgColor(mouseScreenPos))
+            {
+                return;
+            }
+            SetPoint(_mousePoint, GetWorldPos(mouseScreenPos));
+            SEPoint.Add(mouseScreenPos);
+            _SEPointObject.Add(_mousePoint);
+            _mousePoint = null;
+            if (SEPoint.Count == 2)
+            {
+                _setOn = false;
+            }
+        }
+
+        private void SetPoint(GameObject point, Vector3 pos)
+        {
+            point.transform.position = pos;
         }
 
         private void UpdataMouseLine()
@@ -288,6 +392,11 @@ namespace Project.Work
             line.transform.rotation *= Quaternion.Euler(90, 0, 0);
         }
 
+        private void SetVertexRadius(float radius)
+        {
+            VertexPrefab.transform.localScale = new Vector3(radius, radius, radius);
+        }
+
         #region EndCurrentPolygonDrawing
         private void EndCurrentPolygonDrawing()
         {
@@ -346,6 +455,14 @@ namespace Project.Work
             vertex.transform.parent = VertexRoot;
             return vertex;
         }
+
+        private GameObject CreateSEPointObject(Vector3 pos)
+        {
+            GameObject point = GameObject.Instantiate(VertexPrefab, pos, Quaternion.identity);
+            point.name = $"Point {SEPoint.Count}";
+            point.transform.parent = VertexRoot;
+            return point;
+        }
         #endregion
 
         #region about Coordinate conversion
@@ -362,28 +479,6 @@ namespace Project.Work
         private bool IsClose(Vector2Int pos1, Vector2Int pos2)
         {
             return Vector2Int.Distance(pos1, pos2) < ApproximateDis;
-        }
-
-        private bool MouseIsInDrawPanel(Vector2Int mousePos)
-        {
-            if (mousePos.x < _drawRect.xMin || mousePos.x > _drawRect.xMax ||
-                mousePos.y < _drawRect.yMin || mousePos.y > _drawRect.yMax)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private void SetTextureRect()
-        {
-            Vector3[] fourCornersArray = new Vector3[4];
-            DrawPanelRectTransform.GetWorldCorners(fourCornersArray);
-            fourCornersArray[0] = Camera.main.WorldToScreenPoint(fourCornersArray[0]);
-            fourCornersArray[2] = Camera.main.WorldToScreenPoint(fourCornersArray[2]);
-            _drawRect = new Rect();
-            _drawRect.min = new Vector2(fourCornersArray[0].x, fourCornersArray[0].y);
-            _drawRect.max = new Vector2(fourCornersArray[2].x, fourCornersArray[2].y);
         }
         #endregion
 
