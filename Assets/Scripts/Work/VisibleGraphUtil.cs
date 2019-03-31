@@ -59,11 +59,6 @@ namespace Project.Work
                 return true;
             }
 
-            if (a.PolygonNum == b.PolygonNum)
-            {
-                return !IsAcrossPolygon((a.Pos, b.Pos), polygons.Find(x => x.PolygonNum == a.PolygonNum));
-            }
-
             foreach (var edge in edges)
             {
                 if (IsOverlap((a.Pos, b.Pos), edge.Edge))
@@ -80,6 +75,11 @@ namespace Project.Work
                 {
                     return false;
                 }
+            }
+
+            if (a.PolygonNum == b.PolygonNum)
+            {
+                return !IsAcrossPolygon((a.Pos, b.Pos), polygons.Find(x => x.PolygonNum == a.PolygonNum));
             }
 
             return true;

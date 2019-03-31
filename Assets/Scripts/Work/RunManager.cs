@@ -8,7 +8,8 @@ namespace Project.Work
 {
     public interface IRunManager
     {
-        void DrawScene(PolygonScene scene);
+        void SetTestScene(PolygonScene scene);
+        void DrawScene();
         void ClearDrawPanel();
         void StartTest(Vector2Int startPoint, Vector2Int endPoint);
         void GetTestParameter(out int vertexNum, out int edgeNum, out int polygonEdgeNum);
@@ -44,12 +45,21 @@ namespace Project.Work
         private VertexInfo _endPoint;
         private float[,] _adjacentM;
         private bool _isNewScene;
-        private float _CVGTime = 0;
-        private float _SPTime = 0;
 
         public IObservable<string> TestStageHintAsObservable => _hintSubject;
 
         public IObservable<Unit> TestEndAsObservable => _endSubject;
+
+        public void SetTestScene(PolygonScene scene)
+        {
+            _isNewScene = false;
+            if (_scene == null || _scene.SceneNum != scene.SceneNum)
+            {
+                _scene = scene;
+                InitSceneVertexesAndEdges();
+                _isNewScene = true;
+            }
+        }
 
         public void GetTestParameter(out int vertexNum, out int edgeNum, out int polygonEdgeNum)
         {
@@ -104,7 +114,6 @@ namespace Project.Work
         #region ShortestPathPlanning
         private void ShortestPathPlanning()
         {
-            _SPTime = Time.time;
             _hintSubject.OnNext("正在进行路径规划...");
             if (_isNewScene)
             {
@@ -117,7 +126,6 @@ namespace Project.Work
 
             List<int> path = _dijkstraAlgorithm.PathPlanning(_adjacentM, _vertexes.Count, _vertexes.Count + 1);
             DrawShortestPath(path);
-            _SPTime = Time.time - _SPTime;
             _hintSubject.OnNext("已规划出最短路径！");
         }
 
@@ -189,7 +197,6 @@ namespace Project.Work
         #region CreateVisibleGraph
         private void CreateVisibleGraph()
         {
-            _CVGTime = Time.time;
             _hintSubject.OnNext("正在构造可见性图...");
             if (_isNewScene)
             {
@@ -200,7 +207,6 @@ namespace Project.Work
             _visibleGraphUtil.DrawSceneVisibleGraph(_sceneVg, _vertexes);
             _visibleGraphUtil.DrawAppendVisibleGraph(_appendVg, _vertexes, _startPoint, _endPoint);
 
-            _CVGTime = Time.time - _CVGTime;
             _hintSubject.OnNext("可见性图构造结束！");
         }
 
@@ -239,15 +245,8 @@ namespace Project.Work
         #endregion
 
         #region DrawScene
-        public void DrawScene(PolygonScene scene)
+        public void DrawScene()
         {
-            _isNewScene = false;
-            if (_scene == null || _scene.SceneNum != scene.SceneNum)
-            {
-                _scene = scene;
-                InitSceneVertexesAndEdges();
-                _isNewScene = true;
-            }
             DrawPolygon();
             _drawPanelPreference.Apply();
         }

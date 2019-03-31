@@ -43,6 +43,8 @@ namespace Project.Work
         private readonly Subject<bool> _confirmSubject = new Subject<bool>();
         private IObservable<bool> _confirmAsObservable => _confirmSubject;
 
+        private bool _currentSceneHadTested = false;
+
         private void Start()
         {
             InitView();
@@ -139,11 +141,17 @@ namespace Project.Work
 
             StartButton.onClick.AddListener(async () =>
             {
+                if (_currentSceneHadTested)
+                {
+                    ShowPopupPanel("请设置新的起点和终点，再进行测试！", false);
+                    return;
+                }
                 if (SceneEditor.BeReady())
                 {
                     SetHintText("测试程序运行中...");
                     SetButtomMask(true);
                     _runManager.StartTest(SceneEditor.SEPoint[0], SceneEditor.SEPoint[1]);
+                    _currentSceneHadTested = true;
                 }
                 else
                 {
@@ -153,6 +161,13 @@ namespace Project.Work
 
             SetButton.onClick.AddListener(async () =>
             {
+                if (_currentSceneHadTested)
+                {
+                    _runManager.ClearDrawPanel();
+                    _runManager.DrawScene();
+                    ResetParameterText();
+                    _currentSceneHadTested = false;
+                }
                 SceneEditor.SetOrReset();
             });
 
@@ -206,7 +221,8 @@ namespace Project.Work
             Button button = item.GetComponentInChildren<Button>();
             button.onClick.AddListener(() =>
             {
-                _runManager.DrawScene(scene);
+                _runManager.SetTestScene(scene);
+                _runManager.DrawScene();
                 ShowRunPanel();
             });
         }
