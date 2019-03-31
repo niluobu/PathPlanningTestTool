@@ -215,7 +215,7 @@ namespace Project.Work
         {
             GameObject item = GameObject.Instantiate(SceneItemPrefab);
             item.transform.SetParent(SceneItemRoot, false);
-            item.name = $"scene No. {scene.SceneNum}";
+            item.name = $"S No. {scene.SceneNum}";
             Text numText = item.GetComponentInChildren<Text>();
             numText.text = item.name;
             Button button = item.GetComponentInChildren<Button>();

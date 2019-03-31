@@ -124,27 +124,47 @@ namespace Project.Work
                 UpdateSEAdjacentInfo();
             }
 
-            List<int> path = _dijkstraAlgorithm.PathPlanning(_adjacentM, _vertexes.Count, _vertexes.Count + 1);
-            DrawShortestPath(path);
+            List<Path> shortestPaths = _dijkstraAlgorithm.PathPlanning(_adjacentM, _vertexes.Count, _vertexes.Count + 1);
+            DrawShortestPath(shortestPaths);
             _hintSubject.OnNext("已规划出最短路径！");
         }
 
-        private void DrawShortestPath(List<int> path)
+        private void DrawShortestPath(List<Path> shortestPaths)
         {
-            if (path == null)
+            int n = shortestPaths.Count;
+            for (int i = 0; i < n - 1; ++i)
             {
-                Debug.LogError("path planning error");
-                return;
+                DrawPath(GetShortestPathVertexNums(shortestPaths[i], _startPoint.Num, shortestPaths),
+                    _projectSetting.HadSearchedLineColor, _projectSetting.HadSearchedPathLineWide);
             }
-            _glUtil.DrawLine(_startPoint.Pos, _vertexes[path[0]].Pos,
+            DrawPath(GetShortestPathVertexNums(shortestPaths[n - 1], _startPoint.Num, shortestPaths),
                 _projectSetting.ResultPathLineColor, _projectSetting.ResultPathLineWide);
+        }
+
+        private void DrawPath(List<int> path, Color color, int wide)
+        {
+            _vertexes.Add(_startPoint);
+            _vertexes.Add(_endPoint);
+            _glUtil.DrawLine(_startPoint.Pos, _vertexes[path[0]].Pos,
+                color, wide);
             for (int i = 1; i < path.Count; ++i)
             {
                 _glUtil.DrawLine(_vertexes[path[i - 1]].Pos, _vertexes[path[i]].Pos,
-                    _projectSetting.ResultPathLineColor, _projectSetting.ResultPathLineWide);
+                    color, wide);
             }
-            _glUtil.DrawLine(_vertexes[path[path.Count - 1]].Pos, _endPoint.Pos,
-                _projectSetting.ResultPathLineColor, _projectSetting.ResultPathLineWide);
+            _vertexes.Remove(_startPoint);
+            _vertexes.Remove(_endPoint);
+        }
+
+        private List<int> GetShortestPathVertexNums(Path path, int startIndex, List<Path> shortestPaths)
+        {
+            List<int> pathNums = new List<int>();
+            while (path != null)
+            {
+                pathNums.Insert(0, path.VertexIndex);
+                path = shortestPaths.Find(x => x.VertexIndex == path.PreIndex);
+            }
+            return pathNums;
         }
 
         private void CreateSceneAdjacentMatrix()
@@ -220,6 +240,7 @@ namespace Project.Work
                     if (_visibleGraphUtil.Visible(_vertexes[i], _vertexes[j], _edges, _scene.Polygons))
                     {
                         _sceneVg[i, j] = true;
+                        _sceneVg[j, i] = true;
                     }
                 }
             }
@@ -296,8 +317,16 @@ namespace Project.Work
 
         private void InitSceneVertexesAndEdges()
         {
-            _vertexes = new List<VertexInfo>();
-            _edges = new List<EdgeInfo>();
+            if (_vertexes != null)
+            {
+                _vertexes.Clear();
+                _edges.Clear();
+            }
+            else
+            {
+                _vertexes = new List<VertexInfo>();
+                _edges = new List<EdgeInfo>();
+            }
             int vertexNum = 0;
             int edgeNum = 0;
             foreach (var polygon in _scene.Polygons)

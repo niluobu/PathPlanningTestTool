@@ -12,7 +12,7 @@ namespace Project.Work
         [Range(10, 30)]
         public int SEPointCheckRadius = 15;
         [Range(1, 3)]
-        public int PolygonLineWide = 2;
+        public int PolygonLineWide = 1;
         public Color PolygonLineColor;
         [Range(1, 3)]
         public int VisibleGLineWide = 1;
@@ -20,6 +20,9 @@ namespace Project.Work
         [Range(1, 3)]
         public int ResultPathLineWide = 3;
         public Color ResultPathLineColor;
+        [Range(1, 3)]
+        public int HadSearchedPathLineWide = 2;
+        public Color HadSearchedLineColor;
         public Color FillColor;
         public Color TextureBgColor;
     }

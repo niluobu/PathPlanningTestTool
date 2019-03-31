@@ -4,24 +4,24 @@ namespace Project.Work
 {
     public interface IDijkstraAlgorithm
     {
-        List<int> PathPlanning(float[,] adjacentM, int startIndex, int endIndex);
+        List<Path> PathPlanning(float[,] adjacentM, int startIndex, int endIndex);
     }
 
-    internal class DijkstraAlgorithm : IDijkstraAlgorithm
+    public class Path //表示起点到场景中的一个顶点的路径信息
     {
-        public class Path //表示起点到场景中的一个顶点的路径信息
-        {
-            public int VertexIndex; //表示这个路径最后一个顶点的编号
-            public int PreIndex; //路径倒数第二个顶点的编号
-            public float Length; //路径长度
-        }
+        public int VertexIndex; //表示这个路径最后一个顶点的编号
+        public int PreIndex; //路径倒数第二个顶点的编号
+        public float Length; //路径长度
+    }
 
-        private List<Path> _tempPaths = new List<Path>();
-        private List<Path> _shortestPaths = new List<Path>();
+    public class DijkstraAlgorithm : IDijkstraAlgorithm
+    {
+        private readonly List<Path> _tempPaths = new List<Path>();
+        private readonly List<Path> _shortestPaths = new List<Path>();
 
-        public List<int> PathPlanning(float[,] adjacentM, int startIndex, int endIndex)
+        public List<Path> PathPlanning(float[,] adjacentM, int startIndex, int endIndex)
         {
-            InitPaths(adjacentM, startIndex, endIndex);
+            InitPaths(adjacentM, startIndex);
 
             int count = 0;
             int n = adjacentM.GetLength(0);
@@ -30,7 +30,8 @@ namespace Project.Work
                 SelectMinLengthPath(out Path minPath);
                 if (minPath.VertexIndex == endIndex)
                 {
-                    return GetShortestPathVertexNums(minPath, startIndex);
+                    _shortestPaths.Add(minPath);
+                    break;
                 }
                 _tempPaths.Remove(minPath);
                 _shortestPaths.Add(minPath);
@@ -38,7 +39,7 @@ namespace Project.Work
                 ++count;
             }
 
-            return null;
+            return _shortestPaths;
         }
 
         private void UpdateTempPath(float[,] adjacentM, Path minPath)
@@ -52,17 +53,6 @@ namespace Project.Work
                     path.PreIndex = minPath.VertexIndex;
                 }
             }
-        }
-
-        private List<int> GetShortestPathVertexNums(Path path, int startIndex)
-        {
-            List<int> pathNums = new List<int>();
-            while (path.PreIndex != startIndex)
-            {
-                path = _shortestPaths.Find(x => x.VertexIndex == path.PreIndex);
-                pathNums.Insert(0, path.VertexIndex);
-            }
-            return pathNums;
         }
 
         private void SelectMinLengthPath(out Path minPath)
@@ -84,7 +74,7 @@ namespace Project.Work
             }
         }
 
-        private void InitPaths(float[,] adjacentM, int startIndex, int endIndex)
+        private void InitPaths(float[,] adjacentM, int startIndex)
         {
             _tempPaths.Clear();
             _shortestPaths.Clear();

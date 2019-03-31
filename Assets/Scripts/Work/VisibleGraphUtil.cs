@@ -25,7 +25,7 @@ namespace Project.Work
         {
             for (int i = 0; i < vertexes.Count; ++i)
             {
-                for (int j = 0; j < vertexes.Count; ++j)
+                for (int j = i + 1; j < vertexes.Count; ++j)
                 {
                     if (sceneVg[i, j])
                     {
