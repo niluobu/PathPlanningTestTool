@@ -74,7 +74,7 @@ namespace Project.Work
             int n = _adjacentM.GetLength(0);
             for (int i = 0; i < n; i++)
             {
-                for (int j = 0; j < n; j++)
+                for (int j = i + 1; j < n; j++)
                 {
                     if (_adjacentM[i, j] != 0 && _adjacentM[i, j] != float.MaxValue)
                     {

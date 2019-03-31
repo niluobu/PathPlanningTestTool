@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87646ce193fc3c34d90d1180784e2d10, type: 3}
   m_Name: ProjectSetting
   m_EditorClassIdentifier: 
-  SEPointRadius: 0.16
+  SEPointRadius: 0.12
   SEPointCheckRadius: 12
   PolygonLineWide: 1
   PolygonLineColor: {r: 0.6886792, g: 0.6886792, b: 0.6886792, a: 1}

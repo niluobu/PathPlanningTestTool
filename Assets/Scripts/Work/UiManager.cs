@@ -17,7 +17,6 @@ namespace Project.Work
         [Header("-------------")]
         public GameObject MainPanel;
         public Button CreateButton;
-        public GameObject EmptyText;
         public Transform SceneItemRoot;
         public GameObject SceneItemPrefab;
         [Header("-------------")]
@@ -204,7 +203,6 @@ namespace Project.Work
 
         private void RefreshSceneItem()
         {
-            EmptyText.gameObject.SetActive(_polygonStorer.PolygonScenes.Count == 0);
             foreach (var scene in _polygonStorer.PolygonScenes)
             {
                 AddSceneItem(scene);
