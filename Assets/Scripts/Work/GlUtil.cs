@@ -2,19 +2,46 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace Project.Work
 {
     public interface IGlUtil
     {
-        void DrawLine(Vector2Int startPoint, Vector2Int endPoint, Color lineColor, Texture2D texture);
         bool FillPolygon(Polygon polygon, Color fillColor, Texture2D texture, Func<Vector2Int, Vector2Int> convertPosFunc);
+        void DrawLine(Vector2Int startPoint, Vector2Int endPoint, Color lineColor, int lineWide);
     }
 
     public class GlUtil : IGlUtil
     {
+        [Inject] private readonly IDrawPanelPreference _drawPanelPreference;
+
         #region DrawLine
-        public void DrawLine(Vector2Int startPoint, Vector2Int endPoint, Color lineColor, Texture2D texture)
+        public void DrawLine(Vector2Int startPoint, Vector2Int endPoint, Color lineColor, int lineWide)
+        {
+            startPoint = _drawPanelPreference.ConvertToDrawPanelPos(startPoint);
+            endPoint = _drawPanelPreference.ConvertToDrawPanelPos(endPoint);
+            DrawLine(startPoint, endPoint, lineColor, _drawPanelPreference.Texture);
+            for (int i = 1; i < lineWide; ++i)
+            {
+                if (Mathf.Abs(startPoint.x - endPoint.x) < Mathf.Abs(startPoint.y - endPoint.y) || startPoint.x == endPoint.x)
+                {
+                    DrawLine(new Vector2Int(startPoint.x + i, startPoint.y), new Vector2Int(endPoint.x + i, endPoint.y),
+                        lineColor, _drawPanelPreference.Texture);
+                    DrawLine(new Vector2Int(startPoint.x - i, startPoint.y), new Vector2Int(endPoint.x - i, endPoint.y),
+                        lineColor, _drawPanelPreference.Texture);
+                }
+                else
+                {
+                    DrawLine(new Vector2Int(startPoint.x, startPoint.y + i), new Vector2Int(endPoint.x, endPoint.y + i),
+                        lineColor, _drawPanelPreference.Texture);
+                    DrawLine(new Vector2Int(startPoint.x, startPoint.y - i), new Vector2Int(endPoint.x, endPoint.y - i),
+                        lineColor, _drawPanelPreference.Texture);
+                }
+            }
+        }
+
+        private void DrawLine(Vector2Int startPoint, Vector2Int endPoint, Color lineColor, Texture2D texture)
         {
             DrawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, lineColor, texture);
         }
@@ -207,7 +234,6 @@ namespace Project.Work
                 edgeTable.Add(edge.MinY, new List<Edge>() { edge });
             }
         }
-
         #endregion
 
         //#region DrawCircle

@@ -11,6 +11,8 @@ namespace Project.Work
             Container.BindInterfacesTo<PolygonSceneChecker>().AsSingle();
             Container.BindInterfacesTo<Profile<PolygonSceneConfig>>().AsSingle();
             Container.BindInterfacesTo<RunManager>().AsSingle();
+            Container.BindInterfacesTo<VisibleGraphUtil>().AsSingle();
+            Container.BindInterfacesTo<DijkstraAlgorithm>().AsSingle();
         }
     }
 }

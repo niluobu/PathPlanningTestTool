@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using ModestTree;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
@@ -12,15 +14,23 @@ namespace Project.Work
         bool MouseIsInDrawPanel(Vector2Int screenPos);
         bool PointAroundIsBgColor(Vector2Int screenPos);
         Vector2Int ConvertToDrawPanelPos(Vector2Int pos);
+        void DrawTestPoint(Vector2Int p);
     }
 
     public class DrawPanelPreference : IDrawPanelPreference, IInitializable
     {
+        public class OldPoint
+        {
+            public Color OldColor;
+            public Vector2Int Pos;
+        }
+
         private readonly Image _drawPanel;
         private readonly ProjectSetting _projectSetting;
 
         private Texture2D _texture;
         private Rect _textureRect;
+        private List<OldPoint> _tempPoints = new List<OldPoint>();
 
         public Texture2D Texture => _texture;
 
@@ -37,6 +47,34 @@ namespace Project.Work
             _drawPanel.material.SetTexture("_MainTex", _texture);
             SetTextureBgColor();
             SetTextureRect();
+        }
+
+        public void DrawTestPoint(Vector2Int p)
+        {
+            if (!_tempPoints.IsEmpty())
+            {
+                foreach (var point in _tempPoints)
+                {
+                    _texture.SetPixel(point.Pos.x, point.Pos.y, point.OldColor);
+                }
+                _tempPoints.Clear();
+            }
+
+            for (int i = -5; i <= 5; ++i)
+            {
+                for (int j = -5; j <= 5; ++j)
+                {
+                    Vector2Int t = new Vector2Int(p.x + i, p.y + j);
+                    _tempPoints.Add(new OldPoint()
+                    {
+                        OldColor = _texture.GetPixel(t.x, t.y),
+                        Pos = t
+                    });
+                    _texture.SetPixel(t.x, t.y, Color.red);
+                }
+            }
+
+            Apply();
         }
 
         public void Apply()

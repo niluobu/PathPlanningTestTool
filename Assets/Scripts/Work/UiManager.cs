@@ -34,8 +34,7 @@ namespace Project.Work
         public GameObject TextPanel;
         public Text VertexNumText;
         public Text EdgeNumText;
-        public Text CVGTimeText;
-        public Text SPTimeText;
+        public Text PolygonEdgeNumText;
         public Text HintText;
 
         [Inject] private readonly IPolygonSceneStorer _polygonStorer;
@@ -142,9 +141,9 @@ namespace Project.Work
             {
                 if (SceneEditor.BeReady())
                 {
-                    _runManager.StartTest(SceneEditor.SEPoint[0], SceneEditor.SEPoint[1]);
                     SetHintText("测试程序运行中...");
                     SetButtomMask(true);
+                    _runManager.StartTest(SceneEditor.SEPoint[0], SceneEditor.SEPoint[1]);
                 }
                 else
                 {
@@ -170,6 +169,7 @@ namespace Project.Work
             _runManager.TestEndAsObservable
                 .Subscribe(_ =>
                 {
+                    ShowPopupPanel("测试结束，红线标识了最短路径！", false);
                     SetButtomMask(false);
                     SetParameterText();
                 });
@@ -232,11 +232,10 @@ namespace Project.Work
         private void SetParameterText()
         {
             SetParameterTextVisible(true);
-            _runManager.GetTestParameter(out int vertexNum, out int edgeNum, out int CVGTime, out int SPTime);
+            _runManager.GetTestParameter(out int vertexNum, out int edgeNum, out int polygonEdgeNum);
             VertexNumText.text = vertexNum.ToString();
             EdgeNumText.text = edgeNum.ToString();
-            CVGTimeText.text = CVGTime.ToString();
-            SPTimeText.text = SPTime.ToString();
+            PolygonEdgeNumText.text = polygonEdgeNum.ToString();
         }
 
         private void ResetParameterText()
@@ -244,8 +243,7 @@ namespace Project.Work
             string emptyText = "_ _";
             VertexNumText.text = emptyText;
             EdgeNumText.text = emptyText;
-            CVGTimeText.text = emptyText;
-            SPTimeText.text = emptyText;
+            PolygonEdgeNumText.text = emptyText;
         }
 
         private void SetHintText(string hint)

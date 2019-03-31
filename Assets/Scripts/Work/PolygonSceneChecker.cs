@@ -6,6 +6,9 @@ namespace Project.Work
     public interface IPolygonSceneChecker
     {
         List<int> CheckPolygonScene(PolygonScene polygonScene);
+        bool IsIntersect((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b);
+        bool FastMutexes((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b);
+        bool IsConnecting((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b);
     }
 
     public class EdgeInfo
@@ -68,7 +71,7 @@ namespace Project.Work
                         invalidPolygonNum.Add(edgeInfos[j].PolygonNum);
                         continue;
                     }
-                    if (EdgesIsIntersecting(edgeInfos[i], edgeInfos[j]))
+                    if (EdgesValidCheck(edgeInfos[i], edgeInfos[j]) == false)
                     {
                         invalidPolygonNum.Add(edgeInfos[i].PolygonNum);
                         invalidPolygonNum.Add(edgeInfos[j].PolygonNum);
@@ -84,58 +87,66 @@ namespace Project.Work
             return Vector2Int.Distance(e.Edge.Item1, e.Edge.Item2) < ShortestEdge;
         }
 
-        private bool EdgesIsIntersecting(EdgeInfo a, EdgeInfo b)
+        private bool EdgesValidCheck(EdgeInfo a, EdgeInfo b)
         {
-            if (a.PolygonNum == b.PolygonNum && IsConnecting(a, b))
+            if (a.PolygonNum == b.PolygonNum && IsConnecting(a.Edge, b.Edge))
+            {
+                return true;
+            }
+            if (TooClose(a.Edge, b.Edge))
             {
                 return false;
             }
 
+
+            return IsIntersect(a.Edge, b.Edge) == false;
+        }
+
+        public bool IsIntersect((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b)
+        {
             if (FastMutexes(a, b))
             {
                 return false;
             }
-
-            Vector2Int b1a1 = b.Edge.Item1 - a.Edge.Item1;
-            Vector2Int b1a2 = b.Edge.Item1 - a.Edge.Item2;
-            Vector2Int b2a1 = b.Edge.Item2 - a.Edge.Item1;
-            Vector2Int b2a2 = b.Edge.Item2 - a.Edge.Item2;
+            Vector2Int b1a1 = b.Item1 - a.Item1;
+            Vector2Int b1a2 = b.Item1 - a.Item2;
+            Vector2Int b2a1 = b.Item2 - a.Item1;
+            Vector2Int b2a2 = b.Item2 - a.Item2;
             float m1 = CrossProduct(b1a1, b1a2) * CrossProduct(b2a1, b2a2);
-            Vector2Int a1b1 = a.Edge.Item1 - b.Edge.Item1;
-            Vector2Int a1b2 = a.Edge.Item1 - b.Edge.Item2;
-            Vector2Int a2b1 = a.Edge.Item2 - b.Edge.Item1;
-            Vector2Int a2b2 = a.Edge.Item2 - b.Edge.Item2;
+            Vector2Int a1b1 = a.Item1 - b.Item1;
+            Vector2Int a1b2 = a.Item1 - b.Item2;
+            Vector2Int a2b1 = a.Item2 - b.Item1;
+            Vector2Int a2b2 = a.Item2 - b.Item2;
             float m2 = CrossProduct(a1b1, a1b2) * CrossProduct(a2b1, a2b2);
             if (m1 <= 0 && m2 <= 0)
             {
                 return true;
             }
 
-            return TooClose(a, b);
+            return false;
         }
 
-        private bool TooClose(EdgeInfo a, EdgeInfo b)
+        private bool TooClose((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b)
         {
-            float minDis = Mathf.Min(PointToEdgeShortestDis(a.Edge.Item1, b), PointToEdgeShortestDis(a.Edge.Item2, b),
-                PointToEdgeShortestDis(b.Edge.Item1, a), PointToEdgeShortestDis(b.Edge.Item2, a));
-            //Debug.Log($"polygon {a.PolygonNum} edge {a.EdgeNum} with polygon {b.PolygonNum} edge {b.EdgeNum} misDis : {minDis}");
+            float minDis = Mathf.Min(PointToEdgeShortestDis(a.Item1, b), PointToEdgeShortestDis(a.Item2, b),
+                PointToEdgeShortestDis(b.Item1, a), PointToEdgeShortestDis(b.Item2, a));
             return minDis < ApproximateDis;
         }
 
-        private float PointToEdgeShortestDis(Vector2Int pos, EdgeInfo e)
+        private float PointToEdgeShortestDis(Vector2Int pos, (Vector2Int, Vector2Int) e)
         {
-            float eSquareDis = SquareDis(e.Edge.Item1, e.Edge.Item2);
-            Vector2 e1_p = pos - e.Edge.Item1;
-            Vector2 e1_e2 = e.Edge.Item2 - e.Edge.Item1;
+            float eSquareDis = SquareDis(e.Item1, e.Item2);
+            Vector2 e1_p = pos - e.Item1;
+            Vector2 e1_e2 = e.Item2 - e.Item1;
             float r = DotProduct(e1_p, e1_e2) / eSquareDis;
             if (r <= 0)
             {
-                return Vector2Int.Distance(e.Edge.Item1, pos);
+                return Vector2Int.Distance(e.Item1, pos);
             }
 
             if (r >= 1)
             {
-                return Vector2Int.Distance(e.Edge.Item2, pos);
+                return Vector2Int.Distance(e.Item2, pos);
             }
 
             Vector2 e1_e3 = new Vector2(e1_e2.x * r, e1_e2.y * r);
@@ -148,13 +159,13 @@ namespace Project.Work
             return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
         }
 
-        private bool FastMutexes(EdgeInfo a, EdgeInfo b)
+        public bool FastMutexes((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b)
         {
             if (
-                (Mathf.Min(a.Edge.Item1.x, a.Edge.Item2.x) > Mathf.Max(b.Edge.Item1.x, b.Edge.Item2.x) ||
-                Mathf.Max(a.Edge.Item1.x, a.Edge.Item2.x) < Mathf.Min(b.Edge.Item1.x, b.Edge.Item2.x)) ||
-                (Mathf.Min(a.Edge.Item1.y, a.Edge.Item2.y) > Mathf.Max(b.Edge.Item1.y, b.Edge.Item2.y) ||
-                 Mathf.Max(a.Edge.Item1.y, a.Edge.Item2.y) < Mathf.Min(b.Edge.Item1.y, b.Edge.Item2.y))
+                (Mathf.Min(a.Item1.x, a.Item2.x) > Mathf.Max(b.Item1.x, b.Item2.x) ||
+                Mathf.Max(a.Item1.x, a.Item2.x) < Mathf.Min(b.Item1.x, b.Item2.x)) ||
+                (Mathf.Min(a.Item1.y, a.Item2.y) > Mathf.Max(b.Item1.y, b.Item2.y) ||
+                 Mathf.Max(a.Item1.y, a.Item2.y) < Mathf.Min(b.Item1.y, b.Item2.y))
                 )
             {
                 return true;
@@ -163,10 +174,10 @@ namespace Project.Work
             return false;
         }
 
-        private bool IsConnecting(EdgeInfo a, EdgeInfo b)
+        public bool IsConnecting((Vector2Int, Vector2Int) a, (Vector2Int, Vector2Int) b)
         {
-            if (a.Edge.Item1 == b.Edge.Item1 || a.Edge.Item1 == b.Edge.Item2 ||
-                a.Edge.Item2 == b.Edge.Item1 || a.Edge.Item2 == b.Edge.Item2)
+            if (a.Item1 == b.Item1 || a.Item1 == b.Item2 ||
+                a.Item2 == b.Item1 || a.Item2 == b.Item2)
             {
                 return true;
             }
