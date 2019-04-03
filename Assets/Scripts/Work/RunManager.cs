@@ -71,6 +71,10 @@ namespace Project.Work
         private int GetVisibleGraphEdgeNum()
         {
             int count = 0;
+            if (_adjacentM == null)
+            {
+                return count;
+            }
             int n = _adjacentM.GetLength(0);
             for (int i = 0; i < n; i++)
             {
