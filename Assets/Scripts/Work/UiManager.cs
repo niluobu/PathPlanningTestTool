@@ -80,14 +80,7 @@ namespace Project.Work
                     ShowPopupPanel("保存成功！\n退回上一级可查看该新场景的信息，并选择进行测试", false);
                 }
                 await _confirmAsObservable;
-                if (succeed)
-                {
-                    ExitEditPanel();
-                }
-                else
-                {
-                    SceneEditor.EditorOn = true;
-                }
+                SceneEditor.EditorOn = true;
             });
 
             ExitEditButton.onClick.AddListener(async () =>
