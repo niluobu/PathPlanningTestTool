@@ -29,13 +29,13 @@ namespace Project.Work
 
         private readonly Dictionary<int, List<GameObject>> _sceneVertexes = new Dictionary<int, List<GameObject>>();
         private readonly Dictionary<int, List<GameObject>> _sceneEdges = new Dictionary<int, List<GameObject>>();
-        private readonly PolygonScene _polygonScene = new PolygonScene();
+        private PolygonScene _polygonScene;
         private int _scenePolygonNum = 1000;
         private bool _sceneDirty = false;
 
         [HideInInspector]
-        public List<Vector2Int> SEPoint = new List<Vector2Int>();
-        private List<GameObject> _SEPointObject = new List<GameObject>();
+        public List<Vector2Int> TargetPoints = new List<Vector2Int>();
+        private readonly List<GameObject> _targetPointObjects = new List<GameObject>();
         private bool _setOn = false;
         private GameObject _mousePoint = null;
 
@@ -43,20 +43,40 @@ namespace Project.Work
         [Inject] private readonly IPolygonSceneChecker _polygonSceneChecker;
         [Inject] private readonly IDrawPanelPreference _drawPanelPreference;
         [Inject] private readonly ProjectSetting _projectSetting;
+        
+        private void InitPolygonScene()
+        {
+            _polygonScene = new PolygonScene();
+            int sceneNum = 2000;
+            if (_polygonSceneStorer.PolygonScenes.Count > 0)
+            {
+                sceneNum += _polygonSceneStorer.PolygonScenes.Count;
+            }
+            _polygonScene.SceneNum = sceneNum;
+            _polygonScene.Polygons = new List<Polygon>();
+            _scenePolygonNum = 1000;
+        }
+        
+        #region 编辑场景的接口
+        public void IntoSceneEdit()
+        {
+            SetLineColor(LineColor);
+            SetVertexRadius(VertexRadius);
+            InitPolygonScene();
+            _editorOn = true;
+        }
 
+        public void ExitSceneEdit()
+        {
+            _editorOn = false;
+            ClearScene();
+        }
+        
         private bool _editorOn = false;
         public bool EditorOn
         {
             get => _editorOn;
-            set
-            {
-                _editorOn = value;
-                if (value)
-                {
-                    SetLineColor(LineColor);
-                    SetVertexRadius(VertexRadius);
-                }
-            }
+            set => _editorOn = value;
         }
 
         public bool SceneDirty
@@ -90,8 +110,95 @@ namespace Project.Work
             _mouseLine = _edges.IsEmpty() ? null : _edges[_edges.Count - 1];
             return true;
         }
+        
+        public bool SaveScene()
+        {
+            bool succeed = SceneValidityCheck();
+            if (succeed)
+            {
+                _polygonSceneStorer.SavePolygonScene(_polygonScene);
+                _sceneDirty = false;
+            }
+            
+            return succeed;
+        }
+        #endregion
 
-        public void ClearScene()
+        #region 编辑起点终的接口
+        public void IntoPointEdit()
+        {
+            SetLineColor(_projectSetting.PolygonLineColor);
+            SetVertexRadius(_projectSetting.SEPointRadius);
+        }
+
+        public void ExitPointEdit()
+        {
+            _setOn = false;
+            ClearTargetPoints();
+        }
+
+        public bool BeReady()
+        {
+            return TargetPoints.Count == 2;
+        }
+
+        public void SetOrReset()
+        {
+            if (!TargetPoints.IsEmpty())
+            {
+                ClearTargetPoints();
+                _setOn = true;
+                return;
+            }
+            _setOn = true;
+            
+            if (_mousePoint == null)
+            {
+                _mousePoint = CreateTargetPointObject(Vector3.zero);
+            }
+        }
+        #endregion
+
+        private bool SceneValidityCheck()
+        {
+            List<int> invalidPolygonNums = _polygonSceneChecker.CheckPolygonScene(_polygonScene);
+            ClearInvalidPolygon(invalidPolygonNums);
+            return invalidPolygonNums.IsEmpty();
+        }
+
+        private void ClearInvalidPolygon(List<int> invalidPolygonNums)
+        {
+            foreach (var invalidPolygonNum in invalidPolygonNums)
+            {
+                Polygon invalidPolygon = _polygonScene.Polygons.Find(x => x.PolygonNum == invalidPolygonNum);
+                if (invalidPolygon != null)
+                {
+                    _polygonScene.Polygons.Remove(invalidPolygon);
+                }
+
+                if (_sceneVertexes.ContainsKey(invalidPolygonNum))
+                {
+                    foreach (var point in _sceneVertexes[invalidPolygonNum])
+                    {
+                        GameObject.Destroy(point);
+                    }
+
+                    _sceneVertexes.Remove(invalidPolygonNum);
+                }
+
+                if (_sceneEdges.ContainsKey(invalidPolygonNum))
+                {
+                    foreach (var line in _sceneEdges[invalidPolygonNum])
+                    {
+                        GameObject.Destroy(line);
+                    }
+
+                    _sceneEdges.Remove(invalidPolygonNum);
+                }
+            }
+        }
+
+        private void ClearScene()
         {
             _vertexPositions.Clear();
 
@@ -151,88 +258,8 @@ namespace Project.Work
             }
             _sceneVertexes.Clear();
         }
-
-        #region SaveScene
-        public bool SaveScene()
-        {
-            bool succeed = SceneValidityCheck();
-            if (succeed)
-            {
-                _polygonSceneStorer.SavePolygonScene(_polygonScene);
-                _sceneDirty = false;
-            }
-            return succeed;
-        }
-
-        private bool SceneValidityCheck()
-        {
-            List<int> invalidPolygonNums = _polygonSceneChecker.CheckPolygonScene(_polygonScene);
-            ClearInvalidPolygon(invalidPolygonNums);
-            return invalidPolygonNums.IsEmpty();
-        }
-
-        private void ClearInvalidPolygon(List<int> invalidPolygonNums)
-        {
-            foreach (var invalidPolygonNum in invalidPolygonNums)
-            {
-                Polygon invalidPolygon = _polygonScene.Polygons.Find(x => x.PolygonNum == invalidPolygonNum);
-                if (invalidPolygon != null)
-                {
-                    _polygonScene.Polygons.Remove(invalidPolygon);
-                }
-
-                if (_sceneVertexes.ContainsKey(invalidPolygonNum))
-                {
-                    foreach (var point in _sceneVertexes[invalidPolygonNum])
-                    {
-                        GameObject.Destroy(point);
-                    }
-
-                    _sceneVertexes.Remove(invalidPolygonNum);
-                }
-
-                if (_sceneEdges.ContainsKey(invalidPolygonNum))
-                {
-                    foreach (var line in _sceneEdges[invalidPolygonNum])
-                    {
-                        GameObject.Destroy(line);
-                    }
-
-                    _sceneEdges.Remove(invalidPolygonNum);
-                }
-            }
-        }
-        #endregion
-
-        public bool BeReady()
-        {
-            return SEPoint.Count == 2;
-        }
-
-        public void SetOrReset()
-        {
-            if (!SEPoint.IsEmpty())
-            {
-                ClearSEPoint();
-                _setOn = true;
-                return;
-            }
-            _setOn = true;
-            SetLineColor(_projectSetting.PolygonLineColor);
-            SetVertexRadius(_projectSetting.SEPointRadius);
-            if (_mousePoint == null)
-            {
-                _mousePoint = CreateSEPointObject(Vector3.zero);
-            }
-        }
-
-        public void ClearSEObject()
-        {
-            _setOn = false;
-            ClearSEPoint();
-        }
-
-        private void ClearSEPoint()
+        
+        private void ClearTargetPoints()
         {
             if (_mousePoint != null)
             {
@@ -240,81 +267,38 @@ namespace Project.Work
                 _mousePoint = null;
             }
 
-            SEPoint.Clear();
-            for (int i = _SEPointObject.Count - 1; i >= 0; --i)
+            TargetPoints.Clear();
+            for (int i = _targetPointObjects.Count - 1; i >= 0; --i)
             {
-                GameObject.Destroy(_SEPointObject[i]);
+                GameObject.Destroy(_targetPointObjects[i]);
             }
-            _SEPointObject.Clear();
+            _targetPointObjects.Clear();
         }
-
-        private void Start()
-        {
-            SetLineColor(LineColor);
-            SetVertexRadius(VertexRadius);
-            InitPolygonScene();
-        }
-
-        private void InitPolygonScene()
-        {
-            int sceneNum = 2000;
-            if (_polygonSceneStorer.PolygonScenes.Count > 0)
-            {
-                sceneNum += _polygonSceneStorer.PolygonScenes.Count;
-            }
-            _polygonScene.SceneNum = sceneNum;
-            _polygonScene.Polygons = new List<Polygon>();
-        }
-
-        private void Update()
-        {
-            _mouseScreenPos.x = (int)Input.mousePosition.x;
-            _mouseScreenPos.y = (int)Input.mousePosition.y;
-            if (_editorOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
-            {
-                if (Input.GetMouseButtonDown(0))
-                {
-                    AddNewVertex(_mouseScreenPos);
-                }
-
-                UpdataMouseLine();
-            }
-
-            if (_setOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
-            {
-                if (Input.GetMouseButtonDown(0))
-                {
-                    AddSEPoint(_mouseScreenPos);
-                }
-
-                UpdataMousePoint();
-            }
-        }
-
+        
         private void UpdataMousePoint()
         {
-            if (SEPoint.Count == 2)
+            if (TargetPoints.Count == 2)
             {
                 return;
             }
             if (_mousePoint == null)
             {
-                _mousePoint = CreateSEPointObject(GetWorldPos(_mouseScreenPos));
+                _mousePoint = CreateTargetPointObject(GetWorldPos(_mouseScreenPos));
             }
             SetPoint(_mousePoint, GetWorldPos(_mouseScreenPos));
         }
 
-        private void AddSEPoint(Vector2Int mouseScreenPos)
+        private void AddTargetPoint(Vector2Int mouseScreenPos)
         {
             if (!_drawPanelPreference.PointAroundIsBgColor(mouseScreenPos))
             {
                 return;
             }
             SetPoint(_mousePoint, GetWorldPos(mouseScreenPos));
-            SEPoint.Add(mouseScreenPos);
-            _SEPointObject.Add(_mousePoint);
+            TargetPoints.Add(mouseScreenPos);
+            _targetPointObjects.Add(_mousePoint);
             _mousePoint = null;
-            if (SEPoint.Count == 2)
+            if (TargetPoints.Count == 2)
             {
                 _setOn = false;
             }
@@ -324,7 +308,7 @@ namespace Project.Work
         {
             point.transform.position = pos;
         }
-
+        
         private void UpdataMouseLine()
         {
             if (_mouseVertex == null)
@@ -378,11 +362,6 @@ namespace Project.Work
             _mouseLine = null;
         }
 
-        private void SetLineColor(Color color)
-        {
-            LineMaterial.SetColor("_Color", color);
-        }
-
         private void SetLine(Vector3 pos, GameObject v, GameObject line)
         {
             line.transform.position = GetMiddlePos(pos, v.transform.position);
@@ -392,9 +371,39 @@ namespace Project.Work
             line.transform.rotation *= Quaternion.Euler(90, 0, 0);
         }
 
+        private void SetLineColor(Color color)
+        {
+            LineMaterial.SetColor("_Color", color);
+        }
+        
         private void SetVertexRadius(float radius)
         {
             VertexPrefab.transform.localScale = new Vector3(radius, radius, radius);
+        }
+
+        private void Update()
+        {
+            _mouseScreenPos.x = (int)Input.mousePosition.x;
+            _mouseScreenPos.y = (int)Input.mousePosition.y;
+            if (_editorOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
+            {
+                if (Input.GetMouseButtonDown(0))
+                {
+                    AddNewVertex(_mouseScreenPos);
+                }
+
+                UpdataMouseLine();
+            }
+
+            if (_setOn && _drawPanelPreference.MouseIsInDrawPanel(_mouseScreenPos))
+            {
+                if (Input.GetMouseButtonDown(0))
+                {
+                    AddTargetPoint(_mouseScreenPos);
+                }
+
+                UpdataMousePoint();
+            }
         }
 
         #region EndCurrentPolygonDrawing
@@ -407,8 +416,9 @@ namespace Project.Work
             _sceneVertexes.Add(polygon.PolygonNum, new List<GameObject>(_vertexes));
             _vertexes.Clear();
 
-            _sceneEdges.Add(polygon.PolygonNum, new List<GameObject>(_edges));
+            _sceneEdges.Add(polygon.PolygonNum, new List<GameObject>(_edges)); 
             _edges.Clear();
+
             _mouseLine = null;
             _mouseVertex = null;
         }
@@ -456,10 +466,10 @@ namespace Project.Work
             return vertex;
         }
 
-        private GameObject CreateSEPointObject(Vector3 pos)
+        private GameObject CreateTargetPointObject(Vector3 pos)
         {
             GameObject point = GameObject.Instantiate(VertexPrefab, pos, Quaternion.identity);
-            point.name = $"Point {SEPoint.Count}";
+            point.name = $"Point {TargetPoints.Count}";
             point.transform.parent = VertexRoot;
             return point;
         }

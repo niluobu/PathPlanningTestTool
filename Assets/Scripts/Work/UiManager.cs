@@ -63,7 +63,7 @@ namespace Project.Work
         {
             CreateButton.onClick.AddListener(() =>
             {
-                SceneEditor.EditorOn = true;
+                SceneEditor.IntoSceneEdit();
                 ShowEditPanel();
             });
 
@@ -80,7 +80,14 @@ namespace Project.Work
                     ShowPopupPanel("保存成功！\n退回上一级可查看该新场景的信息，并选择进行测试", false);
                 }
                 await _confirmAsObservable;
-                SceneEditor.EditorOn = true;
+                if (succeed)
+                {
+                    ExitEditPanel();
+                }
+                else
+                {
+                    SceneEditor.EditorOn = true;
+                }
             });
 
             ExitEditButton.onClick.AddListener(async () =>
@@ -88,8 +95,7 @@ namespace Project.Work
                 SceneEditor.EditorOn = false;
                 if (!SceneEditor.SceneDirty)
                 {
-                    ShowMainPanel();
-                    SceneEditor.ClearScene();
+                    ExitEditPanel();
                 }
                 else
                 {
@@ -97,8 +103,7 @@ namespace Project.Work
                     bool chioce = await _confirmAsObservable;
                     if (chioce == true)
                     {
-                        ShowMainPanel();
-                        SceneEditor.ClearScene();
+                        ExitEditPanel();
                     }
                     else
                     {
@@ -135,7 +140,7 @@ namespace Project.Work
             {
                 ShowMainPanel();
                 _runManager.ClearDrawPanel();
-                SceneEditor.ClearSEObject();
+                SceneEditor.ExitPointEdit();
             });
 
             StartButton.onClick.AddListener(async () =>
@@ -149,7 +154,7 @@ namespace Project.Work
                 {
                     SetHintText("测试程序运行中...");
                     SetButtomMask(true);
-                    _runManager.StartTest(SceneEditor.SEPoint[0], SceneEditor.SEPoint[1]);
+                    _runManager.StartTest(SceneEditor.TargetPoints[0], SceneEditor.TargetPoints[1]);
                     _currentSceneHadTested = true;
                 }
                 else
@@ -189,6 +194,12 @@ namespace Project.Work
                 });
         }
 
+        private void ExitEditPanel()
+        {
+            SceneEditor.ExitSceneEdit();
+            ShowMainPanel();
+        }
+
         private void SetButtomMask(bool visible)
         {
             ButtonMask.gameObject.SetActive(visible);
@@ -216,11 +227,12 @@ namespace Project.Work
             item.name = $"S No. {scene.SceneNum}";
             Text numText = item.GetComponentInChildren<Text>();
             numText.text = item.name;
-            Button button = item.GetComponentInChildren<Button>();
-            button.onClick.AddListener(() =>
+            Button useButton = item.GetComponentInChildren<Button>();
+            useButton.onClick.AddListener(() =>
             {
                 _runManager.SetTestScene(scene);
                 _runManager.DrawScene();
+                SceneEditor.IntoPointEdit();
                 ShowRunPanel();
             });
         }
